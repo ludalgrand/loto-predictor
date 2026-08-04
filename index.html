@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LotoPredictor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f4f8;
+      color: #2c3e50;
+    }
+
+    header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 { font-size: 24px; }
+    header p { font-size: 13px; color: #95a5a6; margin-top: 4px; }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    .tab {
+      padding: 10px 30px;
+      border: none;
+      border-radius: 25px;
+      font-size: 15px;
+      cursor: pointer;
+      background-color: #dde3ea;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .tab.active { background-color: #e74c3c; color: white; }
+    .tab.euro.active { background-color: #2980b9; }
+
+    .section {
+      display: none;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+    }
+
+    .section.active { display: block; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    .card h2 { font-size: 16px; margin-bottom: 8px; }
+    .card p { font-size: 13px; color: #95a5a6; margin-bottom: 12px; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn.bleu { background-color: #2980b9; }
+    .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+    .grille-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 8px 0;
+      gap: 4px;
+    }
+
+    .grille-num {
+      font-size: 11px;
+      color: #95a5a6;
+      width: 20px;
+      text-align: right;
+      margin-right: 4px;
+    }
+
+    .boule {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background-color: #e74c3c;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .boule.chaud { background-color: #c0392b; border: 2px solid #f39c12; }
+    .boule.chance { background-color: #f39c12; }
+    .boule.etoile { background-color: #2980b9; }
+    .boule.small {
+      width: 28px;
+      height: 28px;
+      font-size: 11px;
+    }
+
+    .legende {
+      text-align: center;
+      font-size: 11px;
+      color: #95a5a6;
+      margin-top: 6px;
+    }
+
+    .legende span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #c0392b;
+      border: 2px solid #f39c12;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .statut {
+      font-size: 12px;
+      text-align: center;
+      color: #95a5a6;
+      margin-top: 8px;
+    }
+
+    .upload-zone {
+      border: 2px dashed #bdc3c7;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      font-size: 13px;
+      color: #7f8c8d;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .upload-zone.ok { border-color: #27ae60; color: #27ae60; }
+
+    input[type="file"] { display: none; }
+
+    .nb-grilles {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .nb-btn {
+      padding: 6px 16px;
+      border: 2px solid #dde3ea;
+      border-radius: 20px;
+      background: white;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .nb-btn.active { border-color: #e74c3c; color: #e74c3c; }
+    .nb-btn.active.bleu { border-color: #2980b9; color: #2980b9; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .stats-block h3 {
+      font-size: 13px;
+      color: #7f8c8d;
+      margin-bottom: 8px;
+    }
+
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .stat-bar-bg {
+      flex: 1;
+      background: #f0f4f8;
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .stat-bar {
+      height: 100%;
+      border-radius: 4px;
+      background-color: #e74c3c;
+    }
+
+    .stat-bar.bleu { background-color: #2980b9; }
+    .stat-bar.orange { background-color: #f39c12; }
+    .stat-bar.gris { background-color: #95a5a6; }
+
+    .stat-pct {
+      font-size: 11px;
+      color: #95a5a6;
+      width: 32px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎰 LotoPredictor</h1>
+    <p>Grilles générées à partir des statistiques historiques FDJ</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="afficher('loto', this)">Loto</button>
+    <button class="tab euro" onclick="afficher('euro', this)">Euromillions</button>
+  </div>
+
+  <!-- LOTO -->
+  <div id="loto" class="section active">
+    <div class="card">
+      <h2>📂 Charger les données Loto</h2>
+      <p>Sélectionne le fichier CSV téléchargé depuis mes-resultats-fdj.fr</p>
+      <div class="upload-zone" id="zone-loto" onclick="document.getElementById('fichier-loto').click()">
+        Cliquer pour charger le fichier CSV Loto
+      </div>
+      <input type="file" id="fichier-loto" accept=".csv" onchange="chargerCSV('loto', this)">
+      <div class="statut" id="statut-loto">Aucune donnée chargée</div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Générer des grilles Loto</h2>
+      <p>2 numéros chauds garantis + 3 pondérés par fréquence historique</p>
+      <div class="nb-grilles">
+        <button class="nb-btn active" id="nb-loto-1" onclick="setNb('loto', 1)">1 grille</button>
+        <button class="nb-btn" id="nb-loto-3" onclick="setNb('loto', 3)">3 grilles</button>
+        <button class="nb-btn" id="nb-loto-5" onclick="setNb('loto', 5)">5 grilles</button>
+      </div>
+      <button class="btn" id="btn-loto" onclick="generer('loto')" disabled>Charger les données d'abord</button>
+      <div id="resultat-loto" style="margin-top:12px;"></div>
+      <div class="legende" id="legende-loto" style="display:none;">
+        <span></span> = numéro chaud garanti
+      </div>
+    </div>
+
+    <div class="card" id="stats-loto" style="display:none;">
+      <h2>📈 Statistiques Loto</h2>
+      <div class="stats-grid" id="stats-loto-contenu"></div>
+    </div>
+  </div>
+
+  <!-- EUROMILLIONS -->
+  <div id="euro" class="section">
+    <div class="card">
+      <h2>📂 Charger les données Euromillions</h2>
+      <p>Sélectionne le fichier CSV téléchargé depuis mes-resultats-fdj.fr</p>
+      <div class="upload-zone" id="zone-euro" onclick="document.getElementById('fichier-euro').click()">
+        Cliquer pour charger le fichier CSV Euromillions
+      </div>
+      <input type="file" id="fichier-euro" accept=".csv" onchange="chargerCSV('euro', this)">
+      <div class="statut" id="statut-euro">Aucune donnée chargée</div>
+    </div>
+
+    <div class="card">
+      <h2>⭐ Générer des grilles Euromillions</h2>
+      <p>2 numéros chauds garantis + 3 pondérés par fréquence historique</p>
+      <div class="nb-grilles">
+        <button class="nb-btn active" id="nb-euro-1" onclick="setNb('euro', 1)">1 grille</button>
+        <button class="nb-btn" id="nb-euro-3" onclick="setNb('euro', 3)">3 grilles</button>
+        <button class="nb-btn" id="nb-euro-5" onclick="setNb('euro', 5)">5 grilles</button>
+      </div>
+      <button class="btn bleu" id="btn-euro" onclick="generer('euro')" disabled>Charger les données d'abord</button>
+      <div id="resultat-euro" style="margin-top:12px;"></div>
+      <div class="legende" id="legende-euro" style="display:none;">
+        <span></span> = numéro chaud garanti
+      </div>
+    </div>
+
+    <div class="card" id="stats-euro" style="display:none;">
+      <h2>📈 Statistiques Euromillions</h2>
+      <div class="stats-grid" id="stats-euro-contenu"></div>
+    </div>
+  </div>
+
+  <script>
+    let statsLoto = null;
+    let statsEuro = null;
+    let nbGrilles = { loto: 1, euro: 1 };
+
+    function afficher(id, el) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      el.classList.add('active');
+    }
+
+    function setNb(jeu, nb) {
+      nbGrilles[jeu] = nb;
+      [1, 3, 5].forEach(n => {
+        const b = document.getElementById('nb-' + jeu + '-' + n);
+        b.classList.remove('active', 'bleu');
+      });
+      const btn = document.getElementById('nb-' + jeu + '-' + nb);
+      btn.classList.add('active');
+      if (jeu === 'euro') btn.classList.add('bleu');
+    }
+
+    function chargerCSV(jeu, input) {
+      const fichier = input.files[0];
+      if (!fichier) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const texte = e.target.result.trim();
+        const lignes = texte.split('\n');
+        const sep = lignes[0].includes('\t') ? '\t' : ';';
+
+        let boules = [], complementaires = [];
+
+        for (let i = 1; i < lignes.length; i++) {
+          const cols = lignes[i].split(sep);
+          if (cols.length < 6) continue;
+
+          for (let b = 2; b <= 6; b++) {
+            const n = parseInt(cols[b]);
+            if (!isNaN(n) && n > 0) boules.push(n);
+          }
+
+          if (jeu === 'loto') {
+            const c = parseInt(cols[7]);
+            if (!isNaN(c) && c > 0) complementaires.push(c);
+          } else {
+            const e1 = parseInt(cols[7]);
+            const e2 = parseInt(cols[8]);
+            if (!isNaN(e1) && e1 > 0) complementaires.push(e1);
+            if (!isNaN(e2) && e2 > 0) complementaires.push(e2);
+          }
+        }
+
+        const stats = {
+          boules: compterFrequences(boules),
+          complementaires: compterFrequences(complementaires),
+          nbTirages: lignes.length - 1
+        };
+
+        if (jeu === 'loto') {
+          statsLoto = stats;
+          document.getElementById('zone-loto').textContent = '✅ ' + fichier.name + ' chargé';
+          document.getElementById('zone-loto').classList.add('ok');
+          document.getElementById('statut-loto').textContent = stats.nbTirages + ' tirages chargés';
+          document.getElementById('btn-loto').disabled = false;
+          document.getElementById('btn-loto').textContent = 'Générer les grilles';
+        } else {
+          statsEuro = stats;
+          document.getElementById('zone-euro').textContent = '✅ ' + fichier.name + ' chargé';
+          document.getElementById('zone-euro').classList.add('ok');
+          document.getElementById('statut-euro').textContent = stats.nbTirages + ' tirages chargés';
+          document.getElementById('btn-euro').disabled = false;
+          document.getElementById('btn-euro').textContent = 'Générer les grilles';
+        }
+
+        afficherStats(jeu, stats);
+
+        // Génération automatique d'1 grille dès le chargement
+        generer(jeu);
+      };
+      reader.readAsText(fichier, 'UTF-8');
+    }
+
+    function compterFrequences(tableau) {
+      const freq = {};
+      tableau.forEach(n => {
+        if (!isNaN(n) && n > 0) freq[n] = (freq[n] || 0) + 1;
+      });
+      return freq;
+    }
+
+    function topNums(freq, n, asc) {
+      return Object.entries(freq)
+        .map(e => ({ num: parseInt(e[0]), count: e[1] }))
+        .sort((a, b) => asc ? a.count - b.count : b.count - a.count)
+        .slice(0, n);
+    }
+
+    function tiragePondere(frequences, nb, min, max, exclus) {
+      const nums = [];
+      const pool = [];
+      for (let n = min; n <= max; n++) {
+        if (exclus && exclus.includes(n)) continue;
+        const poids = frequences[n] || 1;
+        for (let p = 0; p < poids; p++) pool.push(n);
+      }
+      while (nums.length < nb && pool.length > 0) {
+        const idx = Math.floor(Math.random() * pool.length);
+        const n = pool[idx];
+        if (!nums.includes(n)) nums.push(n);
+      }
+      return nums.sort((a, b) => a - b);
+    }
+
+    function generer(jeu) {
+      const stats = jeu === 'loto' ? statsLoto : statsEuro;
+      if (!stats) return;
+      const nb = nbGrilles[jeu];
+      const isEuro = jeu === 'euro';
+      const max = isEuro ? 50 : 49;
+
+      const chauds = topNums(stats.boules, 10, false).map(n => n.num);
+
+      let html = '';
+
+      for (let i = 0; i < nb; i++) {
+        const chaudsDispos = [...chauds];
+        const chaudsChoisis = [];
+        while (chaudsChoisis.length < 2) {
+          const idx = Math.floor(Math.random() * chaudsDispos.length);
+          chaudsChoisis.push(chaudsDispos.splice(idx, 1)[0]);
+        }
+
+        const reste = tiragePondere(stats.boules, 3, 1, max, chaudsChoisis);
+        const tousNums = [...chaudsChoisis, ...reste].sort((a, b) => a - b);
+
+        let row = `<div class="grille-row"><span class="grille-num">${i + 1}.</span>`;
+        tousNums.forEach(n => {
+          const estChaud = chaudsChoisis.includes(n);
+          row += `<span class="boule${estChaud ? ' chaud' : ''}">${n}</span>`;
+        });
+
+        if (isEuro) {
+          const etoiles = tiragePondere(stats.complementaires, 2, 1, 12, []);
+          etoiles.forEach(n => row += `<span class="boule etoile">${n}</span>`);
+        } else {
+          const chance = tiragePondere(stats.complementaires, 1, 1, 10, []);
+          row += `<span class="boule chance">${chance[0]}</span>`;
+        }
+
+        row += '</div>';
+        html += row;
+      }
+
+      document.getElementById('resultat-' + jeu).innerHTML = html;
+      document.getElementById('legende-' + jeu).style.display = 'block';
+    }
+
+    function afficherStats(jeu, stats) {
+      const isEuro = jeu === 'euro';
+      const couleur = isEuro ? 'bleu' : '';
+      const couleurComp = isEuro ? 'bleu' : 'orange';
+      const labelComp = isEuro ? '⭐ Étoiles fréquentes' : '🍀 Numéros chance fréquents';
+
+      const chauds = topNums(stats.boules, 5, false);
+      const froids = topNums(stats.boules, 5, true);
+      const compChauds = topNums(stats.complementaires, 3, false);
+
+      if (!chauds.length || !compChauds.length) return;
+
+      const maxBoule = chauds[0].count;
+      const maxComp = compChauds[0].count;
+
+      const html = `
+        <div class="stats-block">
+          <h3>🔥 Numéros chauds</h3>
+          ${chauds.map(n => `
+            <div class="stat-row">
+              <span class="boule small ${couleur}">${n.num}</span>
+              <div class="stat-bar-bg">
+                <div class="stat-bar ${couleur}" style="width:${Math.round(n.count/maxBoule*100)}%"></div>
+              </div>
+              <span class="stat-pct">${n.count}x</span>
+            </div>`).join('')}
+        </div>
+        <div class="stats-block">
+          <h3>❄️ Numéros froids</h3>
+          ${froids.map(n => `
+            <div class="stat-row">
+              <span class="boule small" style="background:#95a5a6">${n.num}</span>
+              <div class="stat-bar-bg">
+                <div class="stat-bar gris" style="width:${Math.round(n.count/maxBoule*100)}%"></div>
+              </div>
+              <span class="stat-pct">${n.count}x</span>
+            </div>`).join('')}
+        </div>
+        <div class="stats-block" style="grid-column:1/-1">
+          <h3>${labelComp}</h3>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+            ${compChauds.map(n => `
+              <div class="stat-row">
+                <span class="boule small ${couleurComp}">${n.num}</span>
+                <div class="stat-bar-bg" style="width:80px">
+                  <div class="stat-bar ${couleurComp}" style="width:${Math.round(n.count/maxComp*100)}%"></div>
+                </div>
+                <span class="stat-pct">${n.count}x</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('stats-' + jeu + '-contenu').innerHTML = html;
+      document.getElementById('stats-' + jeu).style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>
