@@ -26,6 +26,7 @@
     .card p { font-size: 13px; color: #95a5a6; margin-bottom: 12px; }
     .btn { width: 100%; padding: 14px; background-color: #e74c3c; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     .btn.bleu { background-color: #2980b9; }
+    .btn.gris { background-color: #95a5a6; font-size: 13px; padding: 10px; margin-top: 8px; }
     .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
     .grille-row { display: flex; align-items: center; justify-content: center; margin: 8px 0; gap: 4px; }
     .grille-num { font-size: 11px; color: #95a5a6; width: 20px; text-align: right; margin-right: 4px; }
@@ -35,6 +36,7 @@
     .boule.chance { background-color: #f39c12; }
     .boule.etoile { background-color: #2980b9; }
     .boule.small { width: 28px; height: 28px; font-size: 11px; }
+    .boule.mini { width: 24px; height: 24px; font-size: 10px; }
     .legende { text-align: center; font-size: 11px; color: #95a5a6; margin-top: 6px; line-height: 2; }
     .legende .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
     .legende .dot.chaud { background: #c0392b; border: 2px solid #f39c12; }
@@ -59,6 +61,15 @@
     .stat-bar.vert { background-color: #27ae60; }
     .stat-pct { font-size: 11px; color: #95a5a6; width: 32px; text-align: right; }
     .equilibre { font-size: 11px; color: #27ae60; text-align: center; margin-top: 2px; margin-bottom: 4px; }
+
+    /* Historique */
+    .historique-item {
+      border-bottom: 1px solid #f0f4f8;
+      padding: 10px 0;
+    }
+    .historique-item:last-child { border-bottom: none; }
+    .historique-date { font-size: 11px; color: #95a5a6; margin-bottom: 4px; }
+    .historique-vide { font-size: 13px; color: #bdc3c7; text-align: center; padding: 20px 0; }
   </style>
 </head>
 <body>
@@ -71,6 +82,7 @@
   <div class="tabs">
     <button class="tab active" onclick="afficher('loto', this)">Loto</button>
     <button class="tab euro" onclick="afficher('euro', this)">Euromillions</button>
+    <button class="tab" onclick="afficher('historique', this)">Historique</button>
   </div>
 
   <!-- LOTO -->
@@ -141,16 +153,30 @@
     </div>
   </div>
 
+  <!-- HISTORIQUE -->
+  <div id="historique" class="section">
+    <div class="card">
+      <h2>📋 Historique des grilles</h2>
+      <p>Grilles générées pendant cette session</p>
+      <div id="historique-contenu">
+        <div class="historique-vide">Aucune grille générée pour l'instant</div>
+      </div>
+      <button class="btn gris" onclick="effacerHistorique()">🗑️ Effacer l'historique</button>
+    </div>
+  </div>
+
   <script>
     let statsLoto = null;
     let statsEuro = null;
     let nbGrilles = { loto: 1, euro: 1 };
+    let historique = [];
 
     function afficher(id, el) {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       el.classList.add('active');
+      if (id === 'historique') afficherHistorique();
     }
 
     function setNb(jeu, nb) {
@@ -179,25 +205,17 @@
         for (let i = 1; i < lignes.length; i++) {
           const cols = lignes[i].split(sep);
           if (cols.length < 6) continue;
-
           const tirageBoules = [];
           for (let b = 2; b <= 6; b++) {
             const n = parseInt(cols[b]);
-            if (!isNaN(n) && n > 0) {
-              boules.push(n);
-              derniereTirage[n] = i;
-              tirageBoules.push(n);
-            }
+            if (!isNaN(n) && n > 0) { boules.push(n); derniereTirage[n] = i; tirageBoules.push(n); }
           }
-
-          // Calcul des cooccurrences pour ce tirage
           for (let a = 0; a < tirageBoules.length; a++) {
             for (let b = a + 1; b < tirageBoules.length; b++) {
               const cle = Math.min(tirageBoules[a], tirageBoules[b]) + '_' + Math.max(tirageBoules[a], tirageBoules[b]);
               cooccurrences[cle] = (cooccurrences[cle] || 0) + 1;
             }
           }
-
           if (jeu === 'loto') {
             const c = parseInt(cols[7]);
             if (!isNaN(c) && c > 0) { complementaires.push(c); derniereTirageComp[c] = i; }
@@ -215,7 +233,6 @@
         for (let n = 1; n <= maxBoule; n++) retardBoules[n] = derniereTirage[n] ? nbTirages - derniereTirage[n] : nbTirages;
         for (let n = 1; n <= maxComp; n++) retardComp[n] = derniereTirageComp[n] ? nbTirages - derniereTirageComp[n] : nbTirages;
 
-        // Score de cooccurrence par numéro (somme de ses cooccurrences avec les autres)
         const scoreCooc = {};
         for (const [cle, count] of Object.entries(cooccurrences)) {
           const [a, b] = cle.split('_').map(Number);
@@ -223,13 +240,7 @@
           scoreCooc[b] = (scoreCooc[b] || 0) + count;
         }
 
-        const stats = {
-          boules: compterFrequences(boules),
-          complementaires: compterFrequences(complementaires),
-          retardBoules, retardComp,
-          cooccurrences, scoreCooc,
-          nbTirages
-        };
+        const stats = { boules: compterFrequences(boules), complementaires: compterFrequences(complementaires), retardBoules, retardComp, cooccurrences, scoreCooc, nbTirages };
 
         if (jeu === 'loto') {
           statsLoto = stats;
@@ -274,16 +285,12 @@
       const maxRetard = Math.max(...retardVals), minRetard = Math.min(...retardVals);
       const maxCooc = coocVals.length ? Math.max(...coocVals) : 1;
       const minCooc = coocVals.length ? Math.min(...coocVals) : 0;
-
       const scores = {};
       for (let n = min; n <= max; n++) {
-        const freq = frequences[n] || 0;
-        const retard = retards[n] || 0;
-        const cooc = scoreCooc[n] || 0;
+        const freq = frequences[n] || 0, retard = retards[n] || 0, cooc = scoreCooc[n] || 0;
         const freqNorm = maxFreq > minFreq ? (freq - minFreq) / (maxFreq - minFreq) : 0.5;
         const retardNorm = maxRetard > minRetard ? (retard - minRetard) / (maxRetard - minRetard) : 0.5;
         const coocNorm = maxCooc > minCooc ? (cooc - minCooc) / (maxCooc - minCooc) : 0.5;
-        // 40% fréquence, 35% retard, 25% cooccurrence
         scores[n] = 0.40 * freqNorm + 0.35 * retardNorm + 0.25 * coocNorm;
       }
       return scores;
@@ -327,16 +334,15 @@
 
       const scoresBoules = scoresCombines(stats.boules, stats.retardBoules, stats.scoreCooc, 1, maxBoule);
       const scoresComp = scoresCombines(stats.complementaires, stats.retardComp, {}, 1, maxComp);
-
       const chauds = topNums(stats.boules, 10, false).map(n => n.num);
       const enRetard = Object.entries(stats.retardBoules).sort((a, b) => b[1] - a[1]).slice(0, 10).map(e => parseInt(e[0]));
 
       let html = '';
+      const grillesSession = [];
 
       for (let i = 0; i < nb; i++) {
         let tousNums, chaudChoisi, retardChoisi;
         let tentatives = 0;
-
         do {
           const chaudsDispos = [...chauds];
           chaudChoisi = chaudsDispos.splice(Math.floor(Math.random() * chaudsDispos.length), 1)[0];
@@ -348,6 +354,7 @@
           tentatives++;
         } while (!estEquilibre(tousNums, maxBoule) && tentatives < 50);
 
+        let complementairesChoisis = [];
         let row = `<div class="grille-row"><span class="grille-num">${i + 1}.</span>`;
         tousNums.forEach(n => {
           let classe = 'boule';
@@ -359,9 +366,11 @@
         if (isEuro) {
           const etoiles = tiragePondereScore(scoresComp, 2, []);
           etoiles.forEach(n => row += `<span class="boule etoile">${n}</span>`);
+          complementairesChoisis = etoiles;
         } else {
           const chance = tiragePondereScore(scoresComp, 1, []);
           row += `<span class="boule chance">${chance[0]}</span>`;
+          complementairesChoisis = chance;
         }
 
         const pairs = tousNums.filter(n => n % 2 === 0).length;
@@ -369,10 +378,60 @@
         const bas = tousNums.filter(n => n <= milieu).length;
         row += `</div><div class="equilibre">${pairs}P/${5-pairs}I · ${bas}B/${5-bas}H</div>`;
         html += row;
+
+        // Sauvegarder dans l'historique
+        grillesSession.push({
+          jeu,
+          nums: tousNums,
+          complementaires: complementairesChoisis,
+          chaud: chaudChoisi,
+          retard: retardChoisi,
+          date: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        });
       }
+
+      // Ajouter au début de l'historique
+      historique = [...grillesSession.reverse(), ...historique].slice(0, 50);
 
       document.getElementById('resultat-' + jeu).innerHTML = html;
       document.getElementById('legende-' + jeu).style.display = 'block';
+    }
+
+    function afficherHistorique() {
+      const contenu = document.getElementById('historique-contenu');
+      if (historique.length === 0) {
+        contenu.innerHTML = '<div class="historique-vide">Aucune grille générée pour l\'instant</div>';
+        return;
+      }
+
+      let html = '';
+      historique.forEach((g, idx) => {
+        const isEuro = g.jeu === 'euro';
+        const label = isEuro ? '⭐ Euromillions' : '🎰 Loto';
+        html += `<div class="historique-item">
+          <div class="historique-date">${g.date} — ${label}</div>
+          <div class="grille-row" style="justify-content:flex-start;padding-left:4px;">`;
+
+        g.nums.forEach(n => {
+          let classe = 'boule mini';
+          if (n === g.chaud) classe += ' chaud';
+          else if (n === g.retard) classe += ' retard';
+          html += `<span class="${classe}">${n}</span>`;
+        });
+
+        g.complementaires.forEach(n => {
+          html += `<span class="boule mini ${isEuro ? 'etoile' : 'chance'}">${n}</span>`;
+        });
+
+        html += `</div></div>`;
+      });
+
+      contenu.innerHTML = html;
+    }
+
+    function effacerHistorique() {
+      historique = [];
+      afficherHistorique();
     }
 
     function afficherStats(jeu, stats) {
@@ -387,7 +446,6 @@
       const enRetard = Object.entries(stats.retardBoules).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => ({ num: parseInt(e[0]), retard: e[1] }));
       const maxRetard = enRetard[0] ? enRetard[0].retard : 1;
 
-      // Top 5 cooccurrences
       const topCooc = Object.entries(stats.scoreCooc)
         .map(e => ({ num: parseInt(e[0]), score: e[1] }))
         .sort((a, b) => b.score - a.score)
