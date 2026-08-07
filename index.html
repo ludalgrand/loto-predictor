@@ -56,8 +56,9 @@
     .stat-bar.orange { background-color: #f39c12; }
     .stat-bar.gris { background-color: #95a5a6; }
     .stat-bar.violet { background-color: #8e44ad; }
+    .stat-bar.vert { background-color: #27ae60; }
     .stat-pct { font-size: 11px; color: #95a5a6; width: 32px; text-align: right; }
-    .equilibre { font-size: 11px; color: #27ae60; text-align: center; margin-top: 4px; }
+    .equilibre { font-size: 11px; color: #27ae60; text-align: center; margin-top: 2px; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -86,7 +87,7 @@
 
     <div class="card">
       <h2>📊 Générer des grilles Loto</h2>
-      <p>Chauds + retard + parité + distribution équilibrées</p>
+      <p>Chauds + retard + parité + distribution + cooccurrences</p>
       <div class="nb-grilles">
         <button class="nb-btn active" id="nb-loto-1" onclick="setNb('loto', 1)">1 grille</button>
         <button class="nb-btn" id="nb-loto-3" onclick="setNb('loto', 3)">3 grilles</button>
@@ -120,7 +121,7 @@
 
     <div class="card">
       <h2>⭐ Générer des grilles Euromillions</h2>
-      <p>Chauds + retard + parité + distribution équilibrées</p>
+      <p>Chauds + retard + parité + distribution + cooccurrences</p>
       <div class="nb-grilles">
         <button class="nb-btn active" id="nb-euro-1" onclick="setNb('euro', 1)">1 grille</button>
         <button class="nb-btn" id="nb-euro-3" onclick="setNb('euro', 3)">3 grilles</button>
@@ -173,14 +174,30 @@
         const sep = lignes[0].includes('\t') ? '\t' : ';';
         let boules = [], complementaires = [];
         let derniereTirage = {}, derniereTirageComp = {};
+        let cooccurrences = {};
 
         for (let i = 1; i < lignes.length; i++) {
           const cols = lignes[i].split(sep);
           if (cols.length < 6) continue;
+
+          const tirageBoules = [];
           for (let b = 2; b <= 6; b++) {
             const n = parseInt(cols[b]);
-            if (!isNaN(n) && n > 0) { boules.push(n); derniereTirage[n] = i; }
+            if (!isNaN(n) && n > 0) {
+              boules.push(n);
+              derniereTirage[n] = i;
+              tirageBoules.push(n);
+            }
           }
+
+          // Calcul des cooccurrences pour ce tirage
+          for (let a = 0; a < tirageBoules.length; a++) {
+            for (let b = a + 1; b < tirageBoules.length; b++) {
+              const cle = Math.min(tirageBoules[a], tirageBoules[b]) + '_' + Math.max(tirageBoules[a], tirageBoules[b]);
+              cooccurrences[cle] = (cooccurrences[cle] || 0) + 1;
+            }
+          }
+
           if (jeu === 'loto') {
             const c = parseInt(cols[7]);
             if (!isNaN(c) && c > 0) { complementaires.push(c); derniereTirageComp[c] = i; }
@@ -198,10 +215,20 @@
         for (let n = 1; n <= maxBoule; n++) retardBoules[n] = derniereTirage[n] ? nbTirages - derniereTirage[n] : nbTirages;
         for (let n = 1; n <= maxComp; n++) retardComp[n] = derniereTirageComp[n] ? nbTirages - derniereTirageComp[n] : nbTirages;
 
+        // Score de cooccurrence par numéro (somme de ses cooccurrences avec les autres)
+        const scoreCooc = {};
+        for (const [cle, count] of Object.entries(cooccurrences)) {
+          const [a, b] = cle.split('_').map(Number);
+          scoreCooc[a] = (scoreCooc[a] || 0) + count;
+          scoreCooc[b] = (scoreCooc[b] || 0) + count;
+        }
+
         const stats = {
           boules: compterFrequences(boules),
           complementaires: compterFrequences(complementaires),
-          retardBoules, retardComp, nbTirages
+          retardBoules, retardComp,
+          cooccurrences, scoreCooc,
+          nbTirages
         };
 
         if (jeu === 'loto') {
@@ -239,26 +266,32 @@
         .slice(0, n);
     }
 
-    function scoresCombines(frequences, retards, min, max) {
+    function scoresCombines(frequences, retards, scoreCooc, min, max) {
       const freqVals = Object.values(frequences);
       const retardVals = Object.values(retards);
+      const coocVals = Object.values(scoreCooc).filter(v => v > 0);
       const maxFreq = Math.max(...freqVals), minFreq = Math.min(...freqVals);
       const maxRetard = Math.max(...retardVals), minRetard = Math.min(...retardVals);
+      const maxCooc = coocVals.length ? Math.max(...coocVals) : 1;
+      const minCooc = coocVals.length ? Math.min(...coocVals) : 0;
+
       const scores = {};
       for (let n = min; n <= max; n++) {
-        const freq = frequences[n] || 0, retard = retards[n] || 0;
+        const freq = frequences[n] || 0;
+        const retard = retards[n] || 0;
+        const cooc = scoreCooc[n] || 0;
         const freqNorm = maxFreq > minFreq ? (freq - minFreq) / (maxFreq - minFreq) : 0.5;
         const retardNorm = maxRetard > minRetard ? (retard - minRetard) / (maxRetard - minRetard) : 0.5;
-        scores[n] = 0.5 * freqNorm + 0.5 * retardNorm;
+        const coocNorm = maxCooc > minCooc ? (cooc - minCooc) / (maxCooc - minCooc) : 0.5;
+        // 40% fréquence, 35% retard, 25% cooccurrence
+        scores[n] = 0.40 * freqNorm + 0.35 * retardNorm + 0.25 * coocNorm;
       }
       return scores;
     }
 
     function estEquilibre(nums, max) {
-      // Parité : entre 2 et 3 pairs sur 5
       const pairs = nums.filter(n => n % 2 === 0).length;
       if (pairs < 2 || pairs > 3) return false;
-      // Distribution : entre 2 et 3 numéros dans la moitié basse
       const milieu = Math.floor(max / 2);
       const bas = nums.filter(n => n <= milieu).length;
       if (bas < 2 || bas > 3) return false;
@@ -292,8 +325,9 @@
       const maxBoule = isEuro ? 50 : 49;
       const maxComp = isEuro ? 12 : 10;
 
-      const scoresBoules = scoresCombines(stats.boules, stats.retardBoules, 1, maxBoule);
-      const scoresComp = scoresCombines(stats.complementaires, stats.retardComp, 1, maxComp);
+      const scoresBoules = scoresCombines(stats.boules, stats.retardBoules, stats.scoreCooc, 1, maxBoule);
+      const scoresComp = scoresCombines(stats.complementaires, stats.retardComp, {}, 1, maxComp);
+
       const chauds = topNums(stats.boules, 10, false).map(n => n.num);
       const enRetard = Object.entries(stats.retardBoules).sort((a, b) => b[1] - a[1]).slice(0, 10).map(e => parseInt(e[0]));
 
@@ -303,7 +337,6 @@
         let tousNums, chaudChoisi, retardChoisi;
         let tentatives = 0;
 
-        // On réessaie jusqu'à avoir une grille équilibrée (max 50 tentatives)
         do {
           const chaudsDispos = [...chauds];
           chaudChoisi = chaudsDispos.splice(Math.floor(Math.random() * chaudsDispos.length), 1)[0];
@@ -331,13 +364,10 @@
           row += `<span class="boule chance">${chance[0]}</span>`;
         }
 
-        // Indicateur d'équilibre
         const pairs = tousNums.filter(n => n % 2 === 0).length;
-        const impairs = 5 - pairs;
         const milieu = Math.floor(maxBoule / 2);
         const bas = tousNums.filter(n => n <= milieu).length;
-        const haut = 5 - bas;
-        row += `</div><div class="equilibre">${pairs}P/${impairs}I · ${bas}B/${haut}H</div>`;
+        row += `</div><div class="equilibre">${pairs}P/${5-pairs}I · ${bas}B/${5-bas}H</div>`;
         html += row;
       }
 
@@ -357,8 +387,14 @@
       const enRetard = Object.entries(stats.retardBoules).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => ({ num: parseInt(e[0]), retard: e[1] }));
       const maxRetard = enRetard[0] ? enRetard[0].retard : 1;
 
-      if (!chauds.length || !compChauds.length) return;
+      // Top 5 cooccurrences
+      const topCooc = Object.entries(stats.scoreCooc)
+        .map(e => ({ num: parseInt(e[0]), score: e[1] }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+      const maxCooc = topCooc[0] ? topCooc[0].score : 1;
 
+      if (!chauds.length || !compChauds.length) return;
       const maxBoule = chauds[0].count;
       const maxComp = compChauds[0].count;
 
@@ -376,8 +412,14 @@
           ${froids.map(n => `<div class="stat-row"><span class="boule small" style="background:#95a5a6">${n.num}</span><div class="stat-bar-bg"><div class="stat-bar gris" style="width:${Math.round(n.count/maxBoule*100)}%"></div></div><span class="stat-pct">${n.count}x</span></div>`).join('')}
         </div>
         <div class="stats-block">
+          <h3>🤝 Meilleures cooccurrences</h3>
+          ${topCooc.map(n => `<div class="stat-row"><span class="boule small" style="background:#27ae60">${n.num}</span><div class="stat-bar-bg"><div class="stat-bar vert" style="width:${Math.round(n.score/maxCooc*100)}%"></div></div><span class="stat-pct">${n.score}</span></div>`).join('')}
+        </div>
+        <div class="stats-block" style="grid-column:1/-1">
           <h3>${labelComp}</h3>
-          ${compChauds.map(n => `<div class="stat-row"><span class="boule small ${couleurComp}">${n.num}</span><div class="stat-bar-bg"><div class="stat-bar ${couleurComp}" style="width:${Math.round(n.count/maxComp*100)}%"></div></div><span class="stat-pct">${n.count}x</span></div>`).join('')}
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+            ${compChauds.map(n => `<div class="stat-row"><span class="boule small ${couleurComp}">${n.num}</span><div class="stat-bar-bg" style="width:80px"><div class="stat-bar ${couleurComp}" style="width:${Math.round(n.count/maxComp*100)}%"></div></div><span class="stat-pct">${n.count}x</span></div>`).join('')}
+          </div>
         </div>
       `;
 
