@@ -1,21 +1,19 @@
+cat > manifest.json << 'EOF'
 {
   "name": "LotoPredictor",
   "short_name": "LotoPredictor",
   "description": "Générateur de grilles Loto et Euromillions basé sur les statistiques FDJ",
   "start_url": "/loto-predictor/",
   "display": "standalone",
-  "background_color": "#f0f4f8",
+  "background_color": "#2c3e50",
   "theme_color": "#2c3e50",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192x192/2c3e50/ffffff?text=LP",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "https://via.placeholder.com/512x512/2c3e50/ffffff?text=LP",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
+EOF
