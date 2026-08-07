@@ -115,6 +115,7 @@
     }
 
     .boule.chaud { background-color: #c0392b; border: 2px solid #f39c12; }
+    .boule.retard { background-color: #8e44ad; border: 2px solid #d35400; }
     .boule.chance { background-color: #f39c12; }
     .boule.etoile { background-color: #2980b9; }
     .boule.small {
@@ -128,17 +129,26 @@
       font-size: 11px;
       color: #95a5a6;
       margin-top: 6px;
+      line-height: 2;
     }
 
-    .legende span {
+    .legende .dot {
       display: inline-block;
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #c0392b;
-      border: 2px solid #f39c12;
       margin-right: 4px;
       vertical-align: middle;
+    }
+
+    .legende .dot.chaud {
+      background: #c0392b;
+      border: 2px solid #f39c12;
+    }
+
+    .legende .dot.retard {
+      background: #8e44ad;
+      border: 2px solid #d35400;
     }
 
     .statut {
@@ -222,6 +232,7 @@
     .stat-bar.bleu { background-color: #2980b9; }
     .stat-bar.orange { background-color: #f39c12; }
     .stat-bar.gris { background-color: #95a5a6; }
+    .stat-bar.violet { background-color: #8e44ad; }
 
     .stat-pct {
       font-size: 11px;
@@ -259,7 +270,7 @@
 
     <div class="card">
       <h2>📊 Générer des grilles Loto</h2>
-      <p>2 numéros chauds garantis + 3 pondérés par fréquence historique</p>
+      <p>Numéros chauds + numéros en retard + pondération historique</p>
       <div class="nb-grilles">
         <button class="nb-btn active" id="nb-loto-1" onclick="setNb('loto', 1)">1 grille</button>
         <button class="nb-btn" id="nb-loto-3" onclick="setNb('loto', 3)">3 grilles</button>
@@ -268,7 +279,8 @@
       <button class="btn" id="btn-loto" onclick="generer('loto')" disabled>Charger les données d'abord</button>
       <div id="resultat-loto" style="margin-top:12px;"></div>
       <div class="legende" id="legende-loto" style="display:none;">
-        <span></span> = numéro chaud garanti
+        <span class="dot chaud"></span> numéro chaud &nbsp;
+        <span class="dot retard"></span> numéro en retard
       </div>
     </div>
 
@@ -294,7 +306,7 @@
 
     <div class="card">
       <h2>⭐ Générer des grilles Euromillions</h2>
-      <p>2 numéros chauds garantis + 3 pondérés par fréquence historique</p>
+      <p>Numéros chauds + numéros en retard + pondération historique</p>
       <div class="nb-grilles">
         <button class="nb-btn active" id="nb-euro-1" onclick="setNb('euro', 1)">1 grille</button>
         <button class="nb-btn" id="nb-euro-3" onclick="setNb('euro', 3)">3 grilles</button>
@@ -303,7 +315,8 @@
       <button class="btn bleu" id="btn-euro" onclick="generer('euro')" disabled>Charger les données d'abord</button>
       <div id="resultat-euro" style="margin-top:12px;"></div>
       <div class="legende" id="legende-euro" style="display:none;">
-        <span></span> = numéro chaud garanti
+        <span class="dot chaud"></span> numéro chaud &nbsp;
+        <span class="dot retard"></span> numéro en retard
       </div>
     </div>
 
@@ -347,6 +360,9 @@
         const sep = lignes[0].includes('\t') ? '\t' : ';';
 
         let boules = [], complementaires = [];
+        // Pour le retard : dernier tirage où chaque numéro est apparu
+        let derniereTirage = {};
+        let derniereTirageComp = {};
 
         for (let i = 1; i < lignes.length; i++) {
           const cols = lignes[i].split(sep);
@@ -354,24 +370,47 @@
 
           for (let b = 2; b <= 6; b++) {
             const n = parseInt(cols[b]);
-            if (!isNaN(n) && n > 0) boules.push(n);
+            if (!isNaN(n) && n > 0) {
+              boules.push(n);
+              derniereTirage[n] = i; // on garde le dernier index où il est apparu
+            }
           }
 
           if (jeu === 'loto') {
             const c = parseInt(cols[7]);
-            if (!isNaN(c) && c > 0) complementaires.push(c);
+            if (!isNaN(c) && c > 0) {
+              complementaires.push(c);
+              derniereTirageComp[c] = i;
+            }
           } else {
             const e1 = parseInt(cols[7]);
             const e2 = parseInt(cols[8]);
-            if (!isNaN(e1) && e1 > 0) complementaires.push(e1);
-            if (!isNaN(e2) && e2 > 0) complementaires.push(e2);
+            if (!isNaN(e1) && e1 > 0) { complementaires.push(e1); derniereTirageComp[e1] = i; }
+            if (!isNaN(e2) && e2 > 0) { complementaires.push(e2); derniereTirageComp[e2] = i; }
           }
+        }
+
+        const nbTirages = lignes.length - 1;
+
+        // Calcul du retard : nb de tirages depuis la dernière apparition
+        const retardBoules = {};
+        const maxBoule = jeu === 'loto' ? 49 : 50;
+        for (let n = 1; n <= maxBoule; n++) {
+          retardBoules[n] = derniereTirage[n] ? nbTirages - derniereTirage[n] : nbTirages;
+        }
+
+        const retardComp = {};
+        const maxComp = jeu === 'loto' ? 10 : 12;
+        for (let n = 1; n <= maxComp; n++) {
+          retardComp[n] = derniereTirageComp[n] ? nbTirages - derniereTirageComp[n] : nbTirages;
         }
 
         const stats = {
           boules: compterFrequences(boules),
           complementaires: compterFrequences(complementaires),
-          nbTirages: lignes.length - 1
+          retardBoules,
+          retardComp,
+          nbTirages
         };
 
         if (jeu === 'loto') {
@@ -411,14 +450,39 @@
         .slice(0, n);
     }
 
-    function tiragePondere(frequences, nb, min, max, exclus) {
+    function scoresCombines(frequences, retards, min, max) {
+      // Normalisation entre 0 et 1
+      const freqVals = Object.values(frequences);
+      const retardVals = Object.values(retards);
+      const maxFreq = Math.max(...freqVals);
+      const minFreq = Math.min(...freqVals);
+      const maxRetard = Math.max(...retardVals);
+      const minRetard = Math.min(...retardVals);
+
+      const scores = {};
+      for (let n = min; n <= max; n++) {
+        const freq = frequences[n] || 0;
+        const retard = retards[n] || 0;
+        const freqNorm = maxFreq > minFreq ? (freq - minFreq) / (maxFreq - minFreq) : 0.5;
+        const retardNorm = maxRetard > minRetard ? (retard - minRetard) / (maxRetard - minRetard) : 0.5;
+        scores[n] = 0.5 * freqNorm + 0.5 * retardNorm;
+      }
+      return scores;
+    }
+
+    function tiragePondereScore(scores, nb, exclus) {
       const nums = [];
       const pool = [];
-      for (let n = min; n <= max; n++) {
+      const entries = Object.entries(scores);
+      const maxScore = Math.max(...entries.map(e => e[1]));
+
+      for (const [num, score] of entries) {
+        const n = parseInt(num);
         if (exclus && exclus.includes(n)) continue;
-        const poids = frequences[n] || 1;
+        const poids = Math.max(1, Math.round((score / maxScore) * 100));
         for (let p = 0; p < poids; p++) pool.push(n);
       }
+
       while (nums.length < nb && pool.length > 0) {
         const idx = Math.floor(Math.random() * pool.length);
         const n = pool[idx];
@@ -432,34 +496,50 @@
       if (!stats) return;
       const nb = nbGrilles[jeu];
       const isEuro = jeu === 'euro';
-      const max = isEuro ? 50 : 49;
+      const maxBoule = isEuro ? 50 : 49;
+      const maxComp = isEuro ? 12 : 10;
 
+      // Scores combinés fréquence + retard
+      const scoresBoules = scoresCombines(stats.boules, stats.retardBoules, 1, maxBoule);
+      const scoresComp = scoresCombines(stats.complementaires, stats.retardComp, 1, maxComp);
+
+      // Top 10 chauds et top 10 en retard
       const chauds = topNums(stats.boules, 10, false).map(n => n.num);
+      const enRetard = Object.entries(stats.retardBoules)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(e => parseInt(e[0]));
 
       let html = '';
 
       for (let i = 0; i < nb; i++) {
+        // 1 numéro chaud garanti
         const chaudsDispos = [...chauds];
-        const chaudsChoisis = [];
-        while (chaudsChoisis.length < 2) {
-          const idx = Math.floor(Math.random() * chaudsDispos.length);
-          chaudsChoisis.push(chaudsDispos.splice(idx, 1)[0]);
-        }
+        const chaudChoisi = chaudsDispos.splice(Math.floor(Math.random() * chaudsDispos.length), 1)[0];
 
-        const reste = tiragePondere(stats.boules, 3, 1, max, chaudsChoisis);
-        const tousNums = [...chaudsChoisis, ...reste].sort((a, b) => a - b);
+        // 1 numéro en retard garanti (différent du chaud)
+        const retardDispos = enRetard.filter(n => n !== chaudChoisi);
+        const retardChoisi = retardDispos[Math.floor(Math.random() * retardDispos.length)];
+
+        // 3 numéros par score combiné
+        const exclus = [chaudChoisi, retardChoisi];
+        const reste = tiragePondereScore(scoresBoules, 3, exclus);
+        const tousNums = [chaudChoisi, retardChoisi, ...reste].sort((a, b) => a - b);
 
         let row = `<div class="grille-row"><span class="grille-num">${i + 1}.</span>`;
         tousNums.forEach(n => {
-          const estChaud = chaudsChoisis.includes(n);
-          row += `<span class="boule${estChaud ? ' chaud' : ''}">${n}</span>`;
+          let classe = 'boule';
+          if (n === chaudChoisi) classe += ' chaud';
+          else if (n === retardChoisi) classe += ' retard';
+          row += `<span class="${classe}">${n}</span>`;
         });
 
+        // Complémentaires par score combiné
         if (isEuro) {
-          const etoiles = tiragePondere(stats.complementaires, 2, 1, 12, []);
+          const etoiles = tiragePondereScore(scoresComp, 2, []);
           etoiles.forEach(n => row += `<span class="boule etoile">${n}</span>`);
         } else {
-          const chance = tiragePondere(stats.complementaires, 1, 1, 10, []);
+          const chance = tiragePondereScore(scoresComp, 1, []);
           row += `<span class="boule chance">${chance[0]}</span>`;
         }
 
@@ -481,6 +561,13 @@
       const froids = topNums(stats.boules, 5, true);
       const compChauds = topNums(stats.complementaires, 3, false);
 
+      // Top 5 en retard
+      const enRetard = Object.entries(stats.retardBoules)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(e => ({ num: parseInt(e[0]), retard: e[1] }));
+      const maxRetard = enRetard[0] ? enRetard[0].retard : 1;
+
       if (!chauds.length || !compChauds.length) return;
 
       const maxBoule = chauds[0].count;
@@ -499,6 +586,17 @@
             </div>`).join('')}
         </div>
         <div class="stats-block">
+          <h3>⏳ Numéros en retard</h3>
+          ${enRetard.map(n => `
+            <div class="stat-row">
+              <span class="boule small" style="background:#8e44ad">${n.num}</span>
+              <div class="stat-bar-bg">
+                <div class="stat-bar violet" style="width:${Math.round(n.retard/maxRetard*100)}%"></div>
+              </div>
+              <span class="stat-pct">${n.retard}t</span>
+            </div>`).join('')}
+        </div>
+        <div class="stats-block">
           <h3>❄️ Numéros froids</h3>
           ${froids.map(n => `
             <div class="stat-row">
@@ -509,18 +607,16 @@
               <span class="stat-pct">${n.count}x</span>
             </div>`).join('')}
         </div>
-        <div class="stats-block" style="grid-column:1/-1">
+        <div class="stats-block">
           <h3>${labelComp}</h3>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
-            ${compChauds.map(n => `
-              <div class="stat-row">
-                <span class="boule small ${couleurComp}">${n.num}</span>
-                <div class="stat-bar-bg" style="width:80px">
-                  <div class="stat-bar ${couleurComp}" style="width:${Math.round(n.count/maxComp*100)}%"></div>
-                </div>
-                <span class="stat-pct">${n.count}x</span>
-              </div>`).join('')}
-          </div>
+          ${compChauds.map(n => `
+            <div class="stat-row">
+              <span class="boule small ${couleurComp}">${n.num}</span>
+              <div class="stat-bar-bg">
+                <div class="stat-bar ${couleurComp}" style="width:${Math.round(n.count/maxComp*100)}%"></div>
+              </div>
+              <span class="stat-pct">${n.count}x</span>
+            </div>`).join('')}
         </div>
       `;
 
