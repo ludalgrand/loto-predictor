@@ -146,12 +146,13 @@
     .upload-zone {
       border: 2px dashed #bdc3c7;
       border-radius: 10px;
-      padding: 16px;
+      padding: 20px 16px;
       text-align: center;
-      font-size: 13px;
+      font-size: 14px;
       color: #7f8c8d;
       cursor: pointer;
       margin-bottom: 10px;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .upload-zone.ok { border-color: #27ae60; color: #27ae60; }
@@ -166,7 +167,7 @@
     }
 
     .nb-btn {
-      padding: 6px 16px;
+      padding: 8px 18px;
       border: 2px solid #dde3ea;
       border-radius: 20px;
       background: white;
@@ -223,6 +224,22 @@
       width: 32px;
       text-align: right;
     }
+
+    /* Bouton upload mobile */
+    .upload-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background-color: #7f8c8d;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -241,11 +258,13 @@
   <div id="loto" class="section active">
     <div class="card">
       <h2>📂 Charger les données Loto</h2>
-      <p>Sélectionne le fichier CSV téléchargé depuis mes-resultats-fdj.fr</p>
-      <div class="upload-zone" id="zone-loto" onclick="document.getElementById('fichier-loto').click()">
-        Cliquer pour charger le fichier CSV Loto
-      </div>
-      <input type="file" id="fichier-loto" accept=".csv" onchange="chargerCSV('loto', this)">
+      <p>Sélectionne le fichier CSV Loto téléchargé depuis mes-resultats-fdj.fr</p>
+      <label for="fichier-loto">
+        <div class="upload-zone" id="zone-loto">
+          📁 Appuyer pour charger le fichier CSV Loto
+        </div>
+      </label>
+      <input type="file" id="fichier-loto" accept=".csv,text/csv,text/plain,application/octet-stream" onchange="chargerCSV('loto', this)">
       <div class="statut" id="statut-loto">Aucune donnée chargée</div>
     </div>
 
@@ -274,11 +293,13 @@
   <div id="euro" class="section">
     <div class="card">
       <h2>📂 Charger les données Euromillions</h2>
-      <p>Sélectionne le fichier CSV téléchargé depuis mes-resultats-fdj.fr</p>
-      <div class="upload-zone" id="zone-euro" onclick="document.getElementById('fichier-euro').click()">
-        Cliquer pour charger le fichier CSV Euromillions
-      </div>
-      <input type="file" id="fichier-euro" accept=".csv" onchange="chargerCSV('euro', this)">
+      <p>Sélectionne le fichier CSV Euromillions téléchargé depuis mes-resultats-fdj.fr</p>
+      <label for="fichier-euro">
+        <div class="upload-zone" id="zone-euro">
+          📁 Appuyer pour charger le fichier CSV Euromillions
+        </div>
+      </label>
+      <input type="file" id="fichier-euro" accept=".csv,text/csv,text/plain,application/octet-stream" onchange="chargerCSV('euro', this)">
       <div class="statut" id="statut-euro">Aucune donnée chargée</div>
     </div>
 
@@ -381,8 +402,6 @@
         }
 
         afficherStats(jeu, stats);
-
-        // Génération automatique d'1 grille dès le chargement
         generer(jeu);
       };
       reader.readAsText(fichier, 'UTF-8');
